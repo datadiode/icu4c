@@ -1565,7 +1565,7 @@ The leftmost codepage (.xxx) wins.
     if (gCorrectedPOSIXLocale != NULL) {
         return gCorrectedPOSIXLocale;
     }
-
+#ifndef _WIN32_WCE
     LCID id = GetThreadLocale();
     correctedPOSIXLocale = static_cast<char *>(uprv_malloc(POSIX_LOCALE_CAPACITY + 1));
     if (correctedPOSIXLocale) {
@@ -1578,7 +1578,7 @@ The leftmost codepage (.xxx) wins.
             uprv_free(correctedPOSIXLocale);
         }
     }
-
+#endif
     if (gCorrectedPOSIXLocale == NULL) {
         return "en_US";
     }

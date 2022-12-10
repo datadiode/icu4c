@@ -53,6 +53,10 @@
 #include "uconfig_local.h"
 #endif
 
+#ifdef _WIN32_WCE
+#define UCONFIG_NO_FILE_IO 1
+#endif
+
 /**
  * \def U_DEBUG
  * Determines whether to include debugging code.

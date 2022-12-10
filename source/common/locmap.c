@@ -29,7 +29,7 @@
 #include "cstring.h"
 #include "cmemory.h"
 
-#if U_PLATFORM == U_PF_WINDOWS && defined(_MSC_VER) && (_MSC_VER >= 1500)
+#if U_PLATFORM == U_PF_WINDOWS && defined(_MSC_VER) && (_MSC_VER >= 1500) && !defined(_WIN32_WCE)
 /*
  * TODO: It seems like we should widen this to
  * either U_PLATFORM_USES_ONLY_WIN32_API (includes MinGW)

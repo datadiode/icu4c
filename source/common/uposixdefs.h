@@ -70,4 +70,8 @@
 #   endif
 #endif
 
+#ifdef _WIN32_WCE
+#   define getenv(what) (NULL)
+#endif
+
 #endif  /* __UPOSIXDEFS_H__ */

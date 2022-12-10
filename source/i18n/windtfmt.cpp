@@ -162,8 +162,14 @@ UnicodeString &Win32DateFormat::format(Calendar &cal, UnicodeString &appendTo, F
     ft.dwLowDateTime =  (DWORD) (uft & 0xFFFFFFFF);
     ft.dwHighDateTime = (DWORD) ((uft >> 32) & 0xFFFFFFFF);
 
+#ifdef _WIN32_WCE
+    FILETIME ft_local;
+    FileTimeToLocalFileTime(&ft, &ft_local);
+    FileTimeToSystemTime(&ft_local, &st_local);
+#else
     FileTimeToSystemTime(&ft, &st_gmt);
     SystemTimeToTzSpecificLocalTime(&tzi, &st_gmt, &st_local);
+#endif
 
 
     if (fDateStyle != DateFormat::kNone && fTimeStyle != DateFormat::kNone) {

@@ -56,10 +56,10 @@ UOBJECT_DEFINE_RTTI_IMPLEMENTATION(Win32NumberFormat)
  * end in ";0" then the return value should be multiplied by 10.
  * (e.g. "3" => 30, "3;2" => 320)
  */
-static UINT getGrouping(const char *grouping)
+static UINT getGrouping(const WCHAR *grouping)
 {
     UINT g = 0;
-	const char *s;
+    const WCHAR *s;
 
     for (s = grouping; *s != '\0'; s += 1) {
         if (*s > '0' && *s < '9') {
@@ -78,12 +78,12 @@ static UINT getGrouping(const char *grouping)
 
 static void getNumberFormat(NUMBERFMTW *fmt, int32_t lcid)
 {
-    char buf[10];
+    WCHAR buf[10];
 
     GetLocaleInfoW(lcid, LOCALE_RETURN_NUMBER|LOCALE_IDIGITS, (LPWSTR) &fmt->NumDigits, sizeof(UINT));
     GetLocaleInfoW(lcid, LOCALE_RETURN_NUMBER|LOCALE_ILZERO,  (LPWSTR) &fmt->LeadingZero, sizeof(UINT));
 
-    GetLocaleInfoA(lcid, LOCALE_SGROUPING, buf, 10);
+    GetLocaleInfoW(lcid, LOCALE_SGROUPING, buf, 10);
     fmt->Grouping = getGrouping(buf);
 
     fmt->lpDecimalSep = NEW_ARRAY(UChar, 6);
@@ -105,12 +105,12 @@ static void freeNumberFormat(NUMBERFMTW *fmt)
 
 static void getCurrencyFormat(CURRENCYFMTW *fmt, int32_t lcid)
 {
-    char buf[10];
+    WCHAR buf[10];
 
     GetLocaleInfoW(lcid, LOCALE_RETURN_NUMBER|LOCALE_ICURRDIGITS, (LPWSTR) &fmt->NumDigits, sizeof(UINT));
     GetLocaleInfoW(lcid, LOCALE_RETURN_NUMBER|LOCALE_ILZERO, (LPWSTR) &fmt->LeadingZero, sizeof(UINT));
 
-    GetLocaleInfoA(lcid, LOCALE_SMONGROUPING, buf, sizeof(buf));
+    GetLocaleInfoW(lcid, LOCALE_SMONGROUPING, buf, 10);
     fmt->Grouping = getGrouping(buf);
 
     fmt->lpDecimalSep = NEW_ARRAY(UChar, 6);
