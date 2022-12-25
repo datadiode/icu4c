@@ -147,7 +147,6 @@ Format *Win32DateFormat::clone(void) const
 UnicodeString &Win32DateFormat::format(Calendar &cal, UnicodeString &appendTo, FieldPosition &pos) const
 {
     FILETIME ft;
-    SYSTEMTIME st_gmt;
     SYSTEMTIME st_local;
     TIME_ZONE_INFORMATION tzi = *fTZI;
     UErrorCode status = U_ZERO_ERROR;
@@ -167,6 +166,7 @@ UnicodeString &Win32DateFormat::format(Calendar &cal, UnicodeString &appendTo, F
     FileTimeToLocalFileTime(&ft, &ft_local);
     FileTimeToSystemTime(&ft_local, &st_local);
 #else
+    SYSTEMTIME st_gmt;
     FileTimeToSystemTime(&ft, &st_gmt);
     SystemTimeToTzSpecificLocalTime(&tzi, &st_gmt, &st_local);
 #endif

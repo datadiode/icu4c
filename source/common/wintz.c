@@ -43,11 +43,11 @@ typedef struct
 /**
  * Various registry keys and key fragments.
  */
-static const TCHAR CURRENT_ZONE_REGKEY[] = _T("SYSTEM\\CurrentControlSet\\Control\\TimeZoneInformation\\");
+static const WCHAR CURRENT_ZONE_REGKEY[] = L"SYSTEM\\CurrentControlSet\\Control\\TimeZoneInformation\\";
 /* static const char STANDARD_NAME_REGKEY[] = "StandardName"; Currently unused constant */
-static const TCHAR STANDARD_TIME_REGKEY[] = _T(" Standard Time");
-static const TCHAR TZI_REGKEY[] = _T("TZI");
-static const TCHAR STD_REGKEY[] = _T("Std");
+static const WCHAR STANDARD_TIME_REGKEY[] = L" Standard Time";
+static const WCHAR TZI_REGKEY[] = L"TZI";
+static const WCHAR STD_REGKEY[] = L"Std";
 
 /**
  * HKLM subkeys used to probe for the flavor of Windows.  Note that we
@@ -55,12 +55,12 @@ static const TCHAR STD_REGKEY[] = _T("Std");
  * NT, but on XP has become "GMT Standard Time".  We need to
  * discriminate between these cases.
  */
-static const TCHAR* const WIN_TYPE_PROBE_REGKEY[] = {
+static const WCHAR* const WIN_TYPE_PROBE_REGKEY[] = {
     /* WIN_9X_ME_TYPE */
-    _T("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Time Zones"),
+    L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Time Zones",
 
     /* WIN_NT_TYPE */
-    _T("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Time Zones\\GMT")
+    L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Time Zones\\GMT"
 
     /* otherwise: WIN_2K_XP_TYPE */
 };
@@ -69,12 +69,12 @@ static const TCHAR* const WIN_TYPE_PROBE_REGKEY[] = {
  * The time zone root subkeys (under HKLM) for different flavors of
  * Windows.
  */
-static const TCHAR* const TZ_REGKEY[] = {
+static const WCHAR* const TZ_REGKEY[] = {
     /* WIN_9X_ME_TYPE */
-    _T("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Time Zones\\"),
+    L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Time Zones\\",
 
     /* WIN_NT_TYPE | WIN_2K_XP_TYPE */
-    _T("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Time Zones\\")
+    L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Time Zones\\"
 };
 
 /**
@@ -102,7 +102,7 @@ static int32_t detectWindowsType()
         Specifically, is it 9x/Me or not, and is it "GMT" or "GMT
         Standard Time". */
     for (winType = 0; winType < 2; winType++) {
-        result = RegOpenKeyEx(HKEY_LOCAL_MACHINE,
+        result = RegOpenKeyExW(HKEY_LOCAL_MACHINE,
                               WIN_TYPE_PROBE_REGKEY[winType],
                               0,
                               KEY_QUERY_VALUE,
@@ -117,10 +117,10 @@ static int32_t detectWindowsType()
     return winType+1; /* +1 to bring it inline with the enum */
 }
 
-static LONG openTZRegKey(HKEY *hkey, const TCHAR *winid)
+static LONG openTZRegKey(HKEY *hkey, const WCHAR *winid)
 {
-    TCHAR subKeyName[110]; /* TODO: why 96?? */
-    TCHAR *name;
+    WCHAR subKeyName[110]; /* TODO: why 96?? */
+    WCHAR *name;
     LONG result;
 
     /* This isn't thread safe, but it's good enough because the result should be constant per system. */
@@ -128,19 +128,19 @@ static LONG openTZRegKey(HKEY *hkey, const TCHAR *winid)
         gWinType = detectWindowsType();
     }
 
-    _tcscpy(subKeyName, TZ_REGKEY[(gWinType != WIN_9X_ME_TYPE)]);
-    name = &subKeyName[_tcslen(subKeyName)];
-    _tcscat(subKeyName, winid);
+    wcscpy(subKeyName, TZ_REGKEY[(gWinType != WIN_9X_ME_TYPE)]);
+    name = &subKeyName[wcslen(subKeyName)];
+    wcscat(subKeyName, winid);
 
     if (gWinType == WIN_9X_ME_TYPE) {
         /* Remove " Standard Time" */
-        TCHAR *pStd = _tcsstr(subKeyName, STANDARD_TIME_REGKEY);
+        WCHAR *pStd = wcsstr(subKeyName, STANDARD_TIME_REGKEY);
         if (pStd) {
             *pStd = 0;
         }
     }
 
-    result = RegOpenKeyEx(HKEY_LOCAL_MACHINE,
+    result = RegOpenKeyExW(HKEY_LOCAL_MACHINE,
                             subKeyName,
                             0,
                             KEY_QUERY_VALUE,
@@ -148,7 +148,7 @@ static LONG openTZRegKey(HKEY *hkey, const TCHAR *winid)
     return result;
 }
 
-static LONG getTZI(const TCHAR *winid, TZI *tzi)
+static LONG getTZI(const WCHAR *winid, TZI *tzi)
 {
     DWORD cbData = sizeof(TZI);
     LONG result;
@@ -157,7 +157,7 @@ static LONG getTZI(const TCHAR *winid, TZI *tzi)
     result = openTZRegKey(&hkey, winid);
 
     if (result == ERROR_SUCCESS) {
-        result = RegQueryValueEx(hkey,
+        result = RegQueryValueExW(hkey,
                                     TZI_REGKEY,
                                     NULL,
                                     NULL,
@@ -171,7 +171,7 @@ static LONG getTZI(const TCHAR *winid, TZI *tzi)
     return result;
 }
 
-static LONG getSTDName(const TCHAR *winid, TCHAR *regStdName, int32_t length) {
+static LONG getSTDName(const WCHAR *winid, WCHAR *regStdName, int32_t length) {
     DWORD cbData = length;
     LONG result;
     HKEY hkey;
@@ -193,21 +193,21 @@ static LONG getSTDName(const TCHAR *winid, TCHAR *regStdName, int32_t length) {
     return result;
 }
 
-static LONG getTZKeyName(TCHAR* tzKeyName, int32_t length) {
+static LONG getTZKeyName(WCHAR* tzKeyName, int32_t length) {
     HKEY hkey;
     LONG result = FALSE;
     DWORD cbData = length;
 
-    if(ERROR_SUCCESS == RegOpenKeyEx(
+    if(ERROR_SUCCESS == RegOpenKeyExW(
         HKEY_LOCAL_MACHINE,
         CURRENT_ZONE_REGKEY,
         0, 
         KEY_QUERY_VALUE,
         &hkey))
     {
-         result = RegQueryValueEx(
+         result = RegQueryValueExW(
              hkey,
-             _T("TimeZoneKeyName"),
+             L"TimeZoneKeyName",
              NULL,
              NULL,
              (LPBYTE)tzKeyName,
@@ -274,7 +274,7 @@ uprv_detectWindowsTimeZone() {
     char* icuid = NULL;
     UErrorCode status = U_ZERO_ERROR;
     UResourceBundle* bundle = NULL;
-    TCHAR regStdName[MAX_LENGTH_ID];
+    WCHAR regStdName[MAX_LENGTH_ID];
     char tmpid[MAX_LENGTH_ID];
     int32_t len;
     int errorCode = -1;
@@ -323,7 +323,9 @@ uprv_detectWindowsTimeZone() {
     if(isVistaOrHigher) {
         result = getTZKeyName(regStdName, sizeof(regStdName));
         if(ERROR_SUCCESS == result) {
-            UResourceBundle* winTZ = ures_getByKey(bundle, regStdName, NULL, &status);
+            char regStdNameA[MAX_LENGTH_ID];
+            u_strToUTF8(regStdNameA, MAX_LENGTH_ID, NULL, regStdName, MAX_LENGTH_ID, &status);
+            UResourceBundle* winTZ = ures_getByKey(bundle, regStdNameA, NULL, &status);
             if(U_SUCCESS(status)) {
                 const UChar* icuTZ = NULL;
                 if (errorCode != 0) {
@@ -353,7 +355,7 @@ uprv_detectWindowsTimeZone() {
         while (U_SUCCESS(status) && ures_hasNext(bundle)) {
             UBool idFound = FALSE;
             const char* winid;
-            TCHAR winidW[MAX_LENGTH_ID];
+            WCHAR winidW[MAX_LENGTH_ID];
             UResourceBundle* winTZ = ures_getNextResource(bundle, NULL, &status);
             if (U_FAILURE(status)) {
                 break;
@@ -386,7 +388,7 @@ uprv_detectWindowsTimeZone() {
                         uprv_memset(regStdName, 0, sizeof(regStdName));
                         result = getSTDName(winidW, regStdName, sizeof(regStdName));
                         if (result == ERROR_SUCCESS) {
-                            if (_tcscmp(apiTZI.StandardName, regStdName) == 0) {
+                            if (wcscmp(apiTZI.StandardName, regStdName) == 0) {
                                 idFound = TRUE;
                             }
                         }
