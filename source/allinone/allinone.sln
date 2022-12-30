@@ -69,6 +69,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "icuinfo", "..\tools\icuinfo
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "testplug", "..\tools\icuinfo\testplug.vcxproj", "{659D0C08-D4ED-4BF3-B02B-2D8D4B5A7A7A}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PatchPE", "..\tools\PatchPE\PatchPE.vcxproj", "{6FAD024D-5D5E-4BA8-9F79-F34528B8D642}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Compact2013_SDK_86Duino_80B = Debug|Compact2013_SDK_86Duino_80B
@@ -539,6 +541,18 @@ Global
 		{659D0C08-D4ED-4BF3-B02B-2D8D4B5A7A7A}.Release|Win32.Build.0 = Release|Win32
 		{659D0C08-D4ED-4BF3-B02B-2D8D4B5A7A7A}.Release|x64.ActiveCfg = Release|x64
 		{659D0C08-D4ED-4BF3-B02B-2D8D4B5A7A7A}.Release|x64.Build.0 = Release|x64
+		{6FAD024D-5D5E-4BA8-9F79-F34528B8D642}.Debug|Compact2013_SDK_86Duino_80B.ActiveCfg = Debug|Win32
+		{6FAD024D-5D5E-4BA8-9F79-F34528B8D642}.Debug|WEC2013 Beaglebone SDK.ActiveCfg = Debug|Win32
+		{6FAD024D-5D5E-4BA8-9F79-F34528B8D642}.Debug|Win32.ActiveCfg = Debug|Win32
+		{6FAD024D-5D5E-4BA8-9F79-F34528B8D642}.Debug|Win32.Build.0 = Debug|Win32
+		{6FAD024D-5D5E-4BA8-9F79-F34528B8D642}.Debug|x64.ActiveCfg = Debug|x64
+		{6FAD024D-5D5E-4BA8-9F79-F34528B8D642}.Debug|x64.Build.0 = Debug|x64
+		{6FAD024D-5D5E-4BA8-9F79-F34528B8D642}.Release|Compact2013_SDK_86Duino_80B.ActiveCfg = Release|Win32
+		{6FAD024D-5D5E-4BA8-9F79-F34528B8D642}.Release|WEC2013 Beaglebone SDK.ActiveCfg = Release|Win32
+		{6FAD024D-5D5E-4BA8-9F79-F34528B8D642}.Release|Win32.ActiveCfg = Release|Win32
+		{6FAD024D-5D5E-4BA8-9F79-F34528B8D642}.Release|Win32.Build.0 = Release|Win32
+		{6FAD024D-5D5E-4BA8-9F79-F34528B8D642}.Release|x64.ActiveCfg = Release|x64
+		{6FAD024D-5D5E-4BA8-9F79-F34528B8D642}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
