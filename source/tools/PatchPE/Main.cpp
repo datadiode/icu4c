@@ -25,6 +25,21 @@ struct PEHeader
 		IMAGE_OPTIONAL_HEADER64 OptionalHeader64;
 	};
 
+	class IRef
+	{
+		// The capital I in the class name is meant to suggest that the class deals with numbers
+		// of type ptrdiff_t or size_t, for which printf() reserves the format string modifier I.
+		size_t const size;
+		void *const p;
+	public:
+		template<typename T>
+		IRef(T &r) : size(sizeof r), p(&r) { }
+		operator ULONGLONG() { ULONGLONG v = 0; memcpy(&v, p, size); return v; }
+		void operator=(ULONGLONG v) { memcpy(p, &v, size); }
+	private:
+		void operator=(IRef const &);
+	};
+
 	WORD &Subsystem()					{ return M32 ? OptionalHeader32.Subsystem					: OptionalHeader64.Subsystem;					}
 	WORD &DllCharacteristics()			{ return M32 ? OptionalHeader32.DllCharacteristics			: OptionalHeader64.DllCharacteristics;			}
 	DWORD &SectionAlignment()			{ return M32 ? OptionalHeader32.SectionAlignment			: OptionalHeader64.SectionAlignment;			}
@@ -35,6 +50,11 @@ struct PEHeader
 	WORD &MinorImageVersion()			{ return M32 ? OptionalHeader32.MinorImageVersion			: OptionalHeader64.MinorImageVersion;			}
 	WORD &MajorSubsystemVersion()		{ return M32 ? OptionalHeader32.MajorSubsystemVersion		: OptionalHeader64.MajorSubsystemVersion;		}
 	WORD &MinorSubsystemVersion()		{ return M32 ? OptionalHeader32.MinorSubsystemVersion		: OptionalHeader64.MinorSubsystemVersion;		}
+	IRef ImageBase()					{ return M32 ? IRef(OptionalHeader32.ImageBase)				: IRef(OptionalHeader64.ImageBase);				}
+	IRef SizeOfStackReserve()			{ return M32 ? IRef(OptionalHeader32.SizeOfStackReserve)	: IRef(OptionalHeader64.SizeOfStackReserve);	}
+	IRef SizeOfStackCommit()			{ return M32 ? IRef(OptionalHeader32.SizeOfStackCommit)		: IRef(OptionalHeader64.SizeOfStackCommit);		}
+	IRef SizeOfHeapReserve()			{ return M32 ? IRef(OptionalHeader32.SizeOfHeapReserve)		: IRef(OptionalHeader64.SizeOfHeapReserve);		}
+	IRef SizeOfHeapCommit()				{ return M32 ? IRef(OptionalHeader32.SizeOfHeapCommit)		: IRef(OptionalHeader64.SizeOfHeapCommit);		}
 
 	size_t FollowupSize() const
 	{
@@ -56,7 +76,7 @@ extern "C" int wmain(int argc, WCHAR *argv[])
 	PEHeader udtPEHeader;
 	size_t const preambleSize = RTL_SIZEOF_THROUGH_FIELD(PEHeader, Magic);
 
-	wprintf(L"PatchPE 2.0 - Copyright (c) 2017-2022 by Javier Gutierrez Chamorro et al.\n"
+	wprintf(L"PatchPE 2.01 - Copyright (c) 2017-2022 by Javier Gutierrez Chamorro et al.\n"
 			L"Patches PE headers to make them compatible with older versions of Windows\n"
 			L"or, in the occasional case of data-only DLLs, make them work on Windows CE.\n\n");
 	
@@ -69,6 +89,7 @@ extern "C" int wmain(int argc, WCHAR *argv[])
 				L"Available options:\n"
 				L"/Copy <File>                     Create and operate on a copy of the file\n"
 				L"/Default                         Apply default modifications as of v1.35\n"
+				L"/Preview                         Show but don't apply applicable changes\n"
 				L"/Machine <Value>                 Modify IMAGE_FILE_HEADER accordingly\n"
 				L"/Characteristics <Value>         Modify IMAGE_FILE_HEADER accordingly\n"
 				L"/LinkerVersion <Value>           Modify IMAGE_OPTIONAL_HEADER accordingly\n"
@@ -77,6 +98,11 @@ extern "C" int wmain(int argc, WCHAR *argv[])
 				L"/OperatingSystemVersion <Value>  Modify IMAGE_OPTIONAL_HEADER accordingly\n"
 				L"/ImageVersion <Value>            Modify IMAGE_OPTIONAL_HEADER accordingly\n"
 				L"/SubsystemVersion <Value>        Modify IMAGE_OPTIONAL_HEADER accordingly\n"
+				L"/ImageBase <Value>               Modify IMAGE_OPTIONAL_HEADER accordingly\n"
+				L"/SizeOfStackReserve <Value>      Modify IMAGE_OPTIONAL_HEADER accordingly\n"
+				L"/SizeOfStackCommit <Value>       Modify IMAGE_OPTIONAL_HEADER accordingly\n"
+				L"/SizeOfHeapReserve <Value>       Modify IMAGE_OPTIONAL_HEADER accordingly\n"
+				L"/SizeOfHeapCommit <Value>        Modify IMAGE_OPTIONAL_HEADER accordingly\n"
 				L"/Like <File>                     Use values from given PE file\n"
 				L"\n"
 				L"If no options are given, no patching takes place.\n"
@@ -156,21 +182,6 @@ extern "C" int wmain(int argc, WCHAR *argv[])
 		return(-10);
 	}
 
-	wprintf(L"File: %s\n", r);
-	wprintf(L"Machine: 0x%04X\n", udtPEHeader.FileHeader.Machine);
-	wprintf(L"Bitness: %d\n", (udtPEHeader.M32 << 5) | (udtPEHeader.M64 << 6));
-	wprintf(L"Characteristics: 0x%04X\n", udtPEHeader.FileHeader.Characteristics);
-	wprintf(L"Linker Version: %u.%u\n", udtPEHeader.MajorLinkerVersion, udtPEHeader.MinorLinkerVersion);
-	wprintf(L"Subsystem: %u\n", udtPEHeader.Subsystem());
-	wprintf(L"Dll Characteristics: 0x%04X\n", udtPEHeader.DllCharacteristics());
-	wprintf(L"Section Alignment: 0x%08X\n", udtPEHeader.SectionAlignment());
-	wprintf(L"File Alignment: 0x%08X\n", udtPEHeader.FileAlignment());
-	wprintf(L"Operating System Version: %u.%u\n", udtPEHeader.MajorOperatingSystemVersion(), udtPEHeader.MinorOperatingSystemVersion());
-	wprintf(L"Image Version: %u.%u\n", udtPEHeader.MajorImageVersion(), udtPEHeader.MinorImageVersion());
-	wprintf(L"Subsystem Version: %u.%u\n", udtPEHeader.MajorSubsystemVersion(), udtPEHeader.MinorSubsystemVersion());
-	wprintf(L"Large Address Aware: %s\n", udtPEHeader.FileHeader.Characteristics & IMAGE_FILE_LARGE_ADDRESS_AWARE ? L"Yes (>3GB)" : L"No (2GB)");
-	wprintf(L"Aggressively trim the working set: %s\n", udtPEHeader.FileHeader.Characteristics & IMAGE_FILE_AGGRESIVE_WS_TRIM ? L"Yes" : L"No");
-
 	if (fseek(pFile, udtDOSHeader.e_lfanew, SEEK_SET) != 0)
 	{
 		wprintf(L"Cannot seek to write new PE header %s\n", r);
@@ -179,6 +190,7 @@ extern "C" int wmain(int argc, WCHAR *argv[])
 	}
 
 	//Patch header
+	bool preview = false;
 	FILE *pLike = NULL;
 	PEHeader udtPEHeaderLike = udtPEHeader;
 	PEHeader udtPEHeaderUnpatched = udtPEHeader;
@@ -194,6 +206,10 @@ extern "C" int wmain(int argc, WCHAR *argv[])
 			udtPEHeader.MajorSubsystemVersion() = 4;
 			udtPEHeader.MinorSubsystemVersion() = 0;
 			udtPEHeader.FileHeader.Characteristics |= (IMAGE_FILE_LARGE_ADDRESS_AWARE | IMAGE_FILE_AGGRESIVE_WS_TRIM);
+		}
+		else if (_wcsicmp(s, L"/Preview") == 0)
+		{
+			preview = true;
 		}
 		else if (pLike || (++i < argc))
 		{
@@ -262,51 +278,71 @@ extern "C" int wmain(int argc, WCHAR *argv[])
 			}
 			else if (_wcsicmp(s, L"/Machine") == 0)
 			{
-				udtPEHeader.FileHeader.Machine = t ? static_cast<WORD>(wcstol(t, &s, 0)) : udtPEHeaderLike.FileHeader.Machine;
+				udtPEHeader.FileHeader.Machine = t ? static_cast<WORD>(wcstoul(t, &s, 0)) : udtPEHeaderLike.FileHeader.Machine;
 			}
 			else if (_wcsicmp(s, L"/Characteristics") == 0)
 			{
-				udtPEHeader.FileHeader.Characteristics = t ? static_cast<WORD>(wcstol(t, &s, 0)) : udtPEHeaderLike.FileHeader.Characteristics;
+				udtPEHeader.FileHeader.Characteristics = t ? static_cast<WORD>(wcstoul(t, &s, 0)) : udtPEHeaderLike.FileHeader.Characteristics;
 			}
 			else if (_wcsicmp(s, L"/LinkerVersion") == 0)
 			{
-				udtPEHeader.MajorLinkerVersion = t ? static_cast<BYTE>(wcstol(t, &s, 0)) : udtPEHeaderLike.MajorLinkerVersion;
+				udtPEHeader.MajorLinkerVersion = t ? static_cast<BYTE>(wcstoul(t, &s, 0)) : udtPEHeaderLike.MajorLinkerVersion;
 				s += wcsspn(s, L".");
-				udtPEHeader.MinorLinkerVersion = t ? static_cast<BYTE>(wcstol(s, &s, 0)) : udtPEHeaderLike.MinorLinkerVersion;
+				udtPEHeader.MinorLinkerVersion = t ? static_cast<BYTE>(wcstoul(s, &s, 0)) : udtPEHeaderLike.MinorLinkerVersion;
 			}
 			else if (_wcsicmp(s, L"/Subsystem") == 0)
 			{
-				udtPEHeader.Subsystem() = t ? static_cast<WORD>(wcstol(t, &s, 0)) : udtPEHeaderLike.Subsystem();
+				udtPEHeader.Subsystem() = t ? static_cast<WORD>(wcstoul(t, &s, 0)) : udtPEHeaderLike.Subsystem();
 			}
 			else if (_wcsicmp(s, L"/DllCharacteristics") == 0)
 			{
-				udtPEHeader.DllCharacteristics() = t ? static_cast<WORD>(wcstol(t, &s, 0)) : udtPEHeaderLike.DllCharacteristics();
+				udtPEHeader.DllCharacteristics() = t ? static_cast<WORD>(wcstoul(t, &s, 0)) : udtPEHeaderLike.DllCharacteristics();
 			}
 			else if (_wcsicmp(s, L"/SectionAlignment") == 0)
 			{
-				udtPEHeader.SectionAlignment() = t ? static_cast<DWORD>(wcstol(t, &s, 0)) : udtPEHeaderLike.SectionAlignment();
+				udtPEHeader.SectionAlignment() = t ? wcstoul(t, &s, 0) : udtPEHeaderLike.SectionAlignment();
 			}
 			else if (_wcsicmp(s, L"/FileAlignment") == 0)
 			{
-				udtPEHeader.FileAlignment() = t ? static_cast<DWORD>(wcstol(t, &s, 0)) : udtPEHeaderLike.FileAlignment();
+				udtPEHeader.FileAlignment() = t ? wcstoul(t, &s, 0) : udtPEHeaderLike.FileAlignment();
 			}
 			else if (_wcsicmp(s, L"/OperatingSystemVersion") == 0)
 			{
-				udtPEHeader.MajorOperatingSystemVersion() = t ? static_cast<WORD>(wcstol(t, &s, 0)) : udtPEHeaderLike.MajorOperatingSystemVersion();
+				udtPEHeader.MajorOperatingSystemVersion() = t ? static_cast<WORD>(wcstoul(t, &s, 0)) : udtPEHeaderLike.MajorOperatingSystemVersion();
 				s += wcsspn(s, L".");
-				udtPEHeader.MinorOperatingSystemVersion() = t ? static_cast<WORD>(wcstol(s, &s, 0)) : udtPEHeaderLike.MinorOperatingSystemVersion();
+				udtPEHeader.MinorOperatingSystemVersion() = t ? static_cast<WORD>(wcstoul(s, &s, 0)) : udtPEHeaderLike.MinorOperatingSystemVersion();
 			}
 			else if (_wcsicmp(s, L"/ImageVersion") == 0)
 			{
-				udtPEHeader.MajorImageVersion() = t ? static_cast<WORD>(wcstol(t, &s, 0)) : udtPEHeaderLike.MajorImageVersion();
+				udtPEHeader.MajorImageVersion() = t ? static_cast<WORD>(wcstoul(t, &s, 0)) : udtPEHeaderLike.MajorImageVersion();
 				s += wcsspn(s, L".");
-				udtPEHeader.MinorImageVersion() = t ? static_cast<WORD>(wcstol(s, &s, 0)) : udtPEHeaderLike.MinorImageVersion();
+				udtPEHeader.MinorImageVersion() = t ? static_cast<WORD>(wcstoul(s, &s, 0)) : udtPEHeaderLike.MinorImageVersion();
 			}
 			else if (_wcsicmp(s, L"/SubsystemVersion") == 0)
 			{
-				udtPEHeader.MajorSubsystemVersion() = t ? static_cast<WORD>(wcstol(t, &s, 0)) : udtPEHeaderLike.MajorSubsystemVersion();
+				udtPEHeader.MajorSubsystemVersion() = t ? static_cast<WORD>(wcstoul(t, &s, 0)) : udtPEHeaderLike.MajorSubsystemVersion();
 				s += wcsspn(s, L".");
-				udtPEHeader.MinorSubsystemVersion() = t ? static_cast<WORD>(wcstol(s, &s, 0)) : udtPEHeaderLike.MinorSubsystemVersion();
+				udtPEHeader.MinorSubsystemVersion() = t ? static_cast<WORD>(wcstoul(s, &s, 0)) : udtPEHeaderLike.MinorSubsystemVersion();
+			}
+			else if (_wcsicmp(s, L"/ImageBase") == 0)
+			{
+				udtPEHeader.ImageBase() = t ? wcstoull(t, &s, 0) : udtPEHeaderLike.ImageBase();
+			}
+			else if (_wcsicmp(s, L"/SizeOfStackReserve") == 0)
+			{
+				udtPEHeader.SizeOfStackReserve() = t ? wcstoull(t, &s, 0) : udtPEHeaderLike.SizeOfStackReserve();
+			}
+			else if (_wcsicmp(s, L"/SizeOfStackCommit") == 0)
+			{
+				udtPEHeader.SizeOfStackCommit() = t ? wcstoull(t, &s, 0) : udtPEHeaderLike.SizeOfStackCommit();
+			}
+			else if (_wcsicmp(s, L"/SizeOfHeapReserve") == 0)
+			{
+				udtPEHeader.SizeOfHeapReserve() = t ? wcstoull(t, &s, 0) : udtPEHeaderLike.SizeOfHeapReserve();
+			}
+			else if (_wcsicmp(s, L"/SizeOfHeapCommit") == 0)
+			{
+				udtPEHeader.SizeOfHeapCommit() = t ? wcstoull(t, &s, 0) : udtPEHeaderLike.SizeOfHeapCommit();
 			}
 			else
 			{
@@ -325,8 +361,82 @@ extern "C" int wmain(int argc, WCHAR *argv[])
 		}
 	}
 
+	int const nAddressDigits = (udtPEHeader.M32 << 3) | (udtPEHeader.M64 << 4);
+
+	wprintf(L"File:                               %s\n",		r);
+	wprintf(L"Machine:                            0x%04X",		udtPEHeaderUnpatched.FileHeader.Machine);
+	wprintf(udtPEHeader.FileHeader.Machine ==					udtPEHeaderUnpatched.FileHeader.Machine ? L"\n" : L" --> 0x%04X\n",
+			udtPEHeader.FileHeader.Machine);
+	wprintf(L"Bitness:                            %d\n",		nAddressDigits * 4);
+	wprintf(L"Characteristics:                    0x%04X",		udtPEHeaderUnpatched.FileHeader.Characteristics);
+	wprintf(udtPEHeader.FileHeader.Characteristics ==			udtPEHeaderUnpatched.FileHeader.Characteristics ? L"\n" : L" --> 0x%04X\n",
+			udtPEHeader.FileHeader.Characteristics);
+	wprintf(L"Linker Version:                     %u.%u",		udtPEHeaderUnpatched.MajorLinkerVersion,
+																udtPEHeaderUnpatched.MinorLinkerVersion);
+	wprintf(udtPEHeader.MajorLinkerVersion ==					udtPEHeaderUnpatched.MajorLinkerVersion &&
+			udtPEHeader.MinorLinkerVersion ==					udtPEHeaderUnpatched.MinorLinkerVersion ? L"\n" : L" --> %u.%u\n",
+			udtPEHeader.MajorLinkerVersion,
+			udtPEHeader.MinorLinkerVersion);
+	wprintf(L"Subsystem:                          %u",			udtPEHeaderUnpatched.Subsystem());
+	wprintf(udtPEHeader.Subsystem() ==							udtPEHeaderUnpatched.Subsystem() ? L"\n" : L" --> %u\n",
+			udtPEHeader.Subsystem());
+	wprintf(L"Dll Characteristics:                0x%04X",		udtPEHeaderUnpatched.DllCharacteristics());
+	wprintf(udtPEHeader.DllCharacteristics() ==					udtPEHeaderUnpatched.DllCharacteristics() ? L"\n" : L" --> 0x%04X\n",
+			udtPEHeader.DllCharacteristics());
+	wprintf(L"Section Alignment:                  0x%08X",		udtPEHeaderUnpatched.SectionAlignment());
+	wprintf(udtPEHeader.SectionAlignment() ==					udtPEHeaderUnpatched.SectionAlignment() ? L"\n" : L" --> 0x%08X\n",
+			udtPEHeader.SectionAlignment());
+	wprintf(L"File Alignment:                     0x%08X",		udtPEHeaderUnpatched.FileAlignment());
+	wprintf(udtPEHeader.FileAlignment() ==						udtPEHeaderUnpatched.FileAlignment() ? L"\n" : L" --> 0x%08X\n",
+			udtPEHeader.FileAlignment());
+	wprintf(L"Operating System Version:           %u.%u",		udtPEHeaderUnpatched.MajorOperatingSystemVersion(),
+																udtPEHeaderUnpatched.MinorOperatingSystemVersion());
+	wprintf(udtPEHeader.MajorOperatingSystemVersion() ==		udtPEHeaderUnpatched.MajorOperatingSystemVersion() &&
+			udtPEHeader.MinorOperatingSystemVersion() ==		udtPEHeaderUnpatched.MinorOperatingSystemVersion() ? L"\n" : L" --> %u.%u\n",
+			udtPEHeader.MajorOperatingSystemVersion(),
+			udtPEHeader.MinorOperatingSystemVersion());
+	wprintf(L"Image Version:                      %u.%u",		udtPEHeaderUnpatched.MajorImageVersion(),
+																udtPEHeaderUnpatched.MinorImageVersion());
+	wprintf(udtPEHeader.MajorImageVersion() ==					udtPEHeaderUnpatched.MajorImageVersion() &&
+			udtPEHeader.MinorImageVersion() ==					udtPEHeaderUnpatched.MinorImageVersion() ? L"\n" : L" --> %u.%u\n",
+			udtPEHeader.MajorImageVersion(),
+			udtPEHeader.MinorImageVersion());
+	wprintf(L"Subsystem Version:                  %u.%u",		udtPEHeaderUnpatched.MajorSubsystemVersion(),
+																udtPEHeaderUnpatched.MinorSubsystemVersion());
+	wprintf(udtPEHeader.MajorSubsystemVersion() ==				udtPEHeaderUnpatched.MajorSubsystemVersion() &&
+			udtPEHeader.MinorSubsystemVersion() ==				udtPEHeaderUnpatched.MinorSubsystemVersion() ? L"\n" : L" --> %u.%u\n",
+			udtPEHeader.MajorSubsystemVersion(),
+			udtPEHeader.MinorSubsystemVersion());
+	wprintf(L"Image Base:                         0x%0*I64X",	nAddressDigits, ULONGLONG(udtPEHeaderUnpatched.ImageBase()));
+	wprintf(				ULONGLONG(udtPEHeader.ImageBase()) ==				ULONGLONG(udtPEHeaderUnpatched.ImageBase()) ? L"\n" : L" --> 0x%0*I64X\n",
+			nAddressDigits, ULONGLONG(udtPEHeader.ImageBase()));
+	wprintf(L"Size Of Stack Reserve:              0x%0*I64X",	nAddressDigits, ULONGLONG(udtPEHeaderUnpatched.SizeOfStackReserve()));
+	wprintf(				ULONGLONG(udtPEHeader.SizeOfStackReserve()) ==		ULONGLONG(udtPEHeaderUnpatched.SizeOfStackReserve()) ? L"\n" : L" --> 0x%0*I64X\n",
+			nAddressDigits, ULONGLONG(udtPEHeader.SizeOfStackReserve()));
+	wprintf(L"Size Of Stack Commit:               0x%0*I64X",	nAddressDigits, ULONGLONG(udtPEHeaderUnpatched.SizeOfStackCommit()));
+	wprintf(				ULONGLONG(udtPEHeader.SizeOfStackCommit()) ==		ULONGLONG(udtPEHeaderUnpatched.SizeOfStackCommit()) ? L"\n" : L" --> 0x%0*I64X\n",
+			nAddressDigits, ULONGLONG(udtPEHeader.SizeOfStackCommit()));
+	wprintf(L"Size Of Heap Reserve:               0x%0*I64X",	nAddressDigits, ULONGLONG(udtPEHeaderUnpatched.SizeOfHeapReserve()));
+	wprintf(				ULONGLONG(udtPEHeader.SizeOfHeapReserve()) ==		ULONGLONG(udtPEHeaderUnpatched.SizeOfHeapReserve()) ? L"\n" : L" --> 0x%0*I64X\n",
+			nAddressDigits, ULONGLONG(udtPEHeader.SizeOfHeapReserve()));
+	wprintf(L"Size Of Heap Commit:                0x%0*I64X",	nAddressDigits, ULONGLONG(udtPEHeaderUnpatched.SizeOfHeapCommit()));
+	wprintf(				ULONGLONG(udtPEHeader.SizeOfHeapCommit()) ==		ULONGLONG(udtPEHeaderUnpatched.SizeOfHeapCommit()) ? L"\n" : L" --> 0x%0*I64X\n",
+			nAddressDigits, ULONGLONG(udtPEHeader.SizeOfHeapCommit()));
+
+	WORD wChanged = udtPEHeader.FileHeader.Characteristics ^ udtPEHeaderUnpatched.FileHeader.Characteristics;
+	wprintf(L"Large Address Aware:                %s",		udtPEHeaderUnpatched.FileHeader.Characteristics & IMAGE_FILE_LARGE_ADDRESS_AWARE ? L"Yes (>3GB)" : L"No (2GB)");
+	wprintf((wChanged & IMAGE_FILE_LARGE_ADDRESS_AWARE) ==	0 ? L"\n" : L" --> %s\n",
+			udtPEHeader.FileHeader.Characteristics & IMAGE_FILE_LARGE_ADDRESS_AWARE ? L"Yes (>3GB)" : L"No (2GB)");
+	wprintf(L"Aggressively trim the working set:  %s",		udtPEHeaderUnpatched.FileHeader.Characteristics & IMAGE_FILE_AGGRESIVE_WS_TRIM ? L"Yes" : L"No");
+	wprintf((wChanged & IMAGE_FILE_AGGRESIVE_WS_TRIM) ==	0 ? L"\n" : L" --> %s\n",
+			udtPEHeader.FileHeader.Characteristics & IMAGE_FILE_LARGE_ADDRESS_AWARE ? L"Yes" : L"No");
+
 	//Write PE header if there were changes
-	if (memcmp(&udtPEHeaderUnpatched, &udtPEHeader, sizeof udtPEHeader))
+	if (preview)
+	{
+		wprintf(L"\nNot patched due to preview mode!\n\n");
+	}
+	else if (memcmp(&udtPEHeaderUnpatched, &udtPEHeader, sizeof udtPEHeader))
 	{
 		if (fwrite(&udtPEHeader, 1, preambleSize, pFile) != preambleSize)
 		{
@@ -344,6 +454,10 @@ extern "C" int wmain(int argc, WCHAR *argv[])
 			}
 		}
 		wprintf(L"\nPatched successfully!\n\n");
+	}
+	else
+	{
+		wprintf(L"\nNothing to patch!\n\n");
 	}
 
 	_fcloseall();	
