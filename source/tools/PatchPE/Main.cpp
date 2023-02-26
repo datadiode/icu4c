@@ -76,7 +76,7 @@ extern "C" int wmain(int argc, WCHAR *argv[])
 	PEHeader udtPEHeader;
 	size_t const preambleSize = RTL_SIZEOF_THROUGH_FIELD(PEHeader, Magic);
 
-	wprintf(L"PatchPE 2.01 - Copyright (c) 2017-2022 by Javier Gutierrez Chamorro et al.\n"
+	wprintf(L"PatchPE 2.02 - Copyright (c) 2017-2023 by Javier Gutierrez Chamorro et al.\n"
 			L"Patches PE headers to make them compatible with older versions of Windows\n"
 			L"or, in the occasional case of data-only DLLs, make them work on Windows CE.\n\n");
 	
@@ -87,23 +87,23 @@ extern "C" int wmain(int argc, WCHAR *argv[])
 				L"Example: patchpe.exe notepad.exe /Default\n"
 				L"\n"
 				L"Available options:\n"
-				L"/Copy <File>                     Create and operate on a copy of the file\n"
-				L"/Default                         Apply default modifications as of v1.35\n"
-				L"/Preview                         Show but don't apply applicable changes\n"
-				L"/Machine <Value>                 Modify IMAGE_FILE_HEADER accordingly\n"
-				L"/Characteristics <Value>         Modify IMAGE_FILE_HEADER accordingly\n"
-				L"/LinkerVersion <Value>           Modify IMAGE_OPTIONAL_HEADER accordingly\n"
-				L"/Subsystem <Value>               Modify IMAGE_OPTIONAL_HEADER accordingly\n"
-				L"/DllCharacteristics <Value>      Modify IMAGE_OPTIONAL_HEADER accordingly\n"
-				L"/OperatingSystemVersion <Value>  Modify IMAGE_OPTIONAL_HEADER accordingly\n"
-				L"/ImageVersion <Value>            Modify IMAGE_OPTIONAL_HEADER accordingly\n"
-				L"/SubsystemVersion <Value>        Modify IMAGE_OPTIONAL_HEADER accordingly\n"
-				L"/ImageBase <Value>               Modify IMAGE_OPTIONAL_HEADER accordingly\n"
-				L"/SizeOfStackReserve <Value>      Modify IMAGE_OPTIONAL_HEADER accordingly\n"
-				L"/SizeOfStackCommit <Value>       Modify IMAGE_OPTIONAL_HEADER accordingly\n"
-				L"/SizeOfHeapReserve <Value>       Modify IMAGE_OPTIONAL_HEADER accordingly\n"
-				L"/SizeOfHeapCommit <Value>        Modify IMAGE_OPTIONAL_HEADER accordingly\n"
-				L"/Like <File>                     Use values from given PE file\n"
+				L"/Copy <File>                          Create and operate on a copy of the file\n"
+				L"/Default                              Apply default modifications as of v1.35\n"
+				L"/Preview                              Show but don't apply applicable changes\n"
+				L"/Machine <Value>                      Modify IMAGE_FILE_HEADER accordingly\n"
+				L"/Characteristics <Value>[:<Mask>]     Modify IMAGE_FILE_HEADER accordingly\n"
+				L"/LinkerVersion <Value>                Modify IMAGE_OPTIONAL_HEADER accordingly\n"
+				L"/Subsystem <Value>                    Modify IMAGE_OPTIONAL_HEADER accordingly\n"
+				L"/DllCharacteristics <Value>[:<Mask>]  Modify IMAGE_OPTIONAL_HEADER accordingly\n"
+				L"/OperatingSystemVersion <Value>       Modify IMAGE_OPTIONAL_HEADER accordingly\n"
+				L"/ImageVersion <Value>                 Modify IMAGE_OPTIONAL_HEADER accordingly\n"
+				L"/SubsystemVersion <Value>             Modify IMAGE_OPTIONAL_HEADER accordingly\n"
+				L"/ImageBase <Value>                    Modify IMAGE_OPTIONAL_HEADER accordingly\n"
+				L"/SizeOfStackReserve <Value>           Modify IMAGE_OPTIONAL_HEADER accordingly\n"
+				L"/SizeOfStackCommit <Value>            Modify IMAGE_OPTIONAL_HEADER accordingly\n"
+				L"/SizeOfHeapReserve <Value>            Modify IMAGE_OPTIONAL_HEADER accordingly\n"
+				L"/SizeOfHeapCommit <Value>             Modify IMAGE_OPTIONAL_HEADER accordingly\n"
+				L"/Like <File>                          Use values from given PE file\n"
 				L"\n"
 				L"If no options are given, no patching takes place.\n"
 				L"If the /Copy option is given, it must precede all other options.\n"
@@ -282,13 +282,16 @@ extern "C" int wmain(int argc, WCHAR *argv[])
 			}
 			else if (_wcsicmp(s, L"/Characteristics") == 0)
 			{
-				udtPEHeader.FileHeader.Characteristics = t ? static_cast<WORD>(wcstoul(t, &s, 0)) : udtPEHeaderLike.FileHeader.Characteristics;
+				WORD value = t ? static_cast<WORD>(wcstoul(t, &s, 0)) : udtPEHeaderLike.FileHeader.Characteristics;
+				if (s == t) value = 0xFFFF; //If no value is given, set the bits as per the given mask
+				WORD const mask = *s == L':' ? static_cast<WORD>(wcstoul(s + 1, &s, 0)) : 0xFFFF;
+				udtPEHeader.FileHeader.Characteristics = value & mask | ~mask & udtPEHeaderUnpatched.FileHeader.Characteristics;
 			}
 			else if (_wcsicmp(s, L"/LinkerVersion") == 0)
 			{
-				udtPEHeader.MajorLinkerVersion = t ? static_cast<BYTE>(wcstoul(t, &s, 0)) : udtPEHeaderLike.MajorLinkerVersion;
+				udtPEHeader.MajorLinkerVersion = t ? static_cast<BYTE>(wcstoul(t, &s, 10)) : udtPEHeaderLike.MajorLinkerVersion;
 				s += wcsspn(s, L".");
-				udtPEHeader.MinorLinkerVersion = t ? static_cast<BYTE>(wcstoul(s, &s, 0)) : udtPEHeaderLike.MinorLinkerVersion;
+				udtPEHeader.MinorLinkerVersion = t ? static_cast<BYTE>(wcstoul(s, &s, 10)) : udtPEHeaderLike.MinorLinkerVersion;
 			}
 			else if (_wcsicmp(s, L"/Subsystem") == 0)
 			{
@@ -296,7 +299,10 @@ extern "C" int wmain(int argc, WCHAR *argv[])
 			}
 			else if (_wcsicmp(s, L"/DllCharacteristics") == 0)
 			{
-				udtPEHeader.DllCharacteristics() = t ? static_cast<WORD>(wcstoul(t, &s, 0)) : udtPEHeaderLike.DllCharacteristics();
+				WORD value = t ? static_cast<WORD>(wcstoul(t, &s, 0)) : udtPEHeaderLike.DllCharacteristics();
+				if (s == t) value = 0xFFFF; //If no value is given, set the bits as per the given mask
+				WORD const mask = *s == L':' ? static_cast<WORD>(wcstoul(s + 1, &s, 0)) : 0xFFFF;
+				udtPEHeader.DllCharacteristics() = value & mask | ~mask & udtPEHeaderUnpatched.DllCharacteristics();
 			}
 			else if (_wcsicmp(s, L"/SectionAlignment") == 0)
 			{
@@ -308,21 +314,21 @@ extern "C" int wmain(int argc, WCHAR *argv[])
 			}
 			else if (_wcsicmp(s, L"/OperatingSystemVersion") == 0)
 			{
-				udtPEHeader.MajorOperatingSystemVersion() = t ? static_cast<WORD>(wcstoul(t, &s, 0)) : udtPEHeaderLike.MajorOperatingSystemVersion();
+				udtPEHeader.MajorOperatingSystemVersion() = t ? static_cast<WORD>(wcstoul(t, &s, 10)) : udtPEHeaderLike.MajorOperatingSystemVersion();
 				s += wcsspn(s, L".");
-				udtPEHeader.MinorOperatingSystemVersion() = t ? static_cast<WORD>(wcstoul(s, &s, 0)) : udtPEHeaderLike.MinorOperatingSystemVersion();
+				udtPEHeader.MinorOperatingSystemVersion() = t ? static_cast<WORD>(wcstoul(s, &s, 10)) : udtPEHeaderLike.MinorOperatingSystemVersion();
 			}
 			else if (_wcsicmp(s, L"/ImageVersion") == 0)
 			{
-				udtPEHeader.MajorImageVersion() = t ? static_cast<WORD>(wcstoul(t, &s, 0)) : udtPEHeaderLike.MajorImageVersion();
+				udtPEHeader.MajorImageVersion() = t ? static_cast<WORD>(wcstoul(t, &s, 10)) : udtPEHeaderLike.MajorImageVersion();
 				s += wcsspn(s, L".");
-				udtPEHeader.MinorImageVersion() = t ? static_cast<WORD>(wcstoul(s, &s, 0)) : udtPEHeaderLike.MinorImageVersion();
+				udtPEHeader.MinorImageVersion() = t ? static_cast<WORD>(wcstoul(s, &s, 10)) : udtPEHeaderLike.MinorImageVersion();
 			}
 			else if (_wcsicmp(s, L"/SubsystemVersion") == 0)
 			{
-				udtPEHeader.MajorSubsystemVersion() = t ? static_cast<WORD>(wcstoul(t, &s, 0)) : udtPEHeaderLike.MajorSubsystemVersion();
+				udtPEHeader.MajorSubsystemVersion() = t ? static_cast<WORD>(wcstoul(t, &s, 10)) : udtPEHeaderLike.MajorSubsystemVersion();
 				s += wcsspn(s, L".");
-				udtPEHeader.MinorSubsystemVersion() = t ? static_cast<WORD>(wcstoul(s, &s, 0)) : udtPEHeaderLike.MinorSubsystemVersion();
+				udtPEHeader.MinorSubsystemVersion() = t ? static_cast<WORD>(wcstoul(s, &s, 10)) : udtPEHeaderLike.MinorSubsystemVersion();
 			}
 			else if (_wcsicmp(s, L"/ImageBase") == 0)
 			{
