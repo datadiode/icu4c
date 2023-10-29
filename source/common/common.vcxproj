@@ -331,7 +331,7 @@
       <ImportLibrary>..\..\lib\$(PlatformName)\icuucd.lib</ImportLibrary>
     </Link>
     <PostBuildEvent>
-      <Command>"..\tools\PatchPE\x86\Release\PatchPE.exe" "..\..\bin\icudt56.dll" /Copy "..\..\bin\$(PlatformName)\icudt56.dll" /Like "..\..\bin\$(PlatformName)\icuuc56.dll" /Machine /Characteristics /Subsystem /DllCharacteristics /OperatingSystemVersion /SubsystemVersion</Command>
+      <Command>"..\tools\PatchPE\x86\Release\PatchPE.exe" "..\..\bin\icudt56.dll" /Copy "..\..\bin\$(PlatformName)\icudt56.dll" /Like "..\..\bin\$(PlatformName)\icuuc56d.dll" /Machine /Characteristics /Subsystem /DllCharacteristics /OperatingSystemVersion /SubsystemVersion</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Compact2013_SDK_86Duino_80B'">
@@ -369,7 +369,7 @@
       <ImportLibrary>..\..\lib\$(PlatformName)\icuucd.lib</ImportLibrary>
     </Link>
     <PostBuildEvent>
-      <Command>"..\tools\PatchPE\x86\Release\PatchPE.exe" "..\..\bin\icudt56.dll" /Copy "..\..\bin\$(PlatformName)\icudt56.dll" /Like "..\..\bin\$(PlatformName)\icuuc56.dll" /Machine /Characteristics /Subsystem /DllCharacteristics /OperatingSystemVersion /SubsystemVersion</Command>
+      <Command>"..\tools\PatchPE\x86\Release\PatchPE.exe" "..\..\bin\icudt56.dll" /Copy "..\..\bin\$(PlatformName)\icudt56.dll" /Like "..\..\bin\$(PlatformName)\icuuc56d.dll" /Machine /Characteristics /Subsystem /DllCharacteristics /OperatingSystemVersion /SubsystemVersion</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">

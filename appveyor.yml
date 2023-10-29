@@ -1,0 +1,25 @@
+version: 1.0.{build}
+image:
+- Visual Studio 2013
+- Visual Studio 2017
+
+platform:
+- desktop
+- wec2013
+
+matrix:
+  exclude:
+    - image: Visual Studio 2013
+      platform: desktop
+    - image: Visual Studio 2017
+      platform: wec2013
+
+install:
+- if not "%PLATFORM%" == "desktop" call install_wec2013_prerequisites.bat
+- del *.7z *.zip *.msi
+
+build_script:
+- call build_%PLATFORM%.bat
+
+artifacts:
+- path: '*.7z'
