@@ -433,23 +433,23 @@ extern "C" int wmain(int argc, WCHAR *argv[])
 			}
 			else if (_wcsicmp(s, L"/ImageBase") == 0)
 			{
-				udtPEHeader.ImageBase() = t ? wcstoull(t, &s, 0) : udtPEHeaderLike.ImageBase();
+				udtPEHeader.ImageBase() = t ? _wcstoui64(t, &s, 0) : udtPEHeaderLike.ImageBase();
 			}
 			else if (_wcsicmp(s, L"/SizeOfStackReserve") == 0)
 			{
-				udtPEHeader.SizeOfStackReserve() = t ? wcstoull(t, &s, 0) : udtPEHeaderLike.SizeOfStackReserve();
+				udtPEHeader.SizeOfStackReserve() = t ? _wcstoui64(t, &s, 0) : udtPEHeaderLike.SizeOfStackReserve();
 			}
 			else if (_wcsicmp(s, L"/SizeOfStackCommit") == 0)
 			{
-				udtPEHeader.SizeOfStackCommit() = t ? wcstoull(t, &s, 0) : udtPEHeaderLike.SizeOfStackCommit();
+				udtPEHeader.SizeOfStackCommit() = t ? _wcstoui64(t, &s, 0) : udtPEHeaderLike.SizeOfStackCommit();
 			}
 			else if (_wcsicmp(s, L"/SizeOfHeapReserve") == 0)
 			{
-				udtPEHeader.SizeOfHeapReserve() = t ? wcstoull(t, &s, 0) : udtPEHeaderLike.SizeOfHeapReserve();
+				udtPEHeader.SizeOfHeapReserve() = t ? _wcstoui64(t, &s, 0) : udtPEHeaderLike.SizeOfHeapReserve();
 			}
 			else if (_wcsicmp(s, L"/SizeOfHeapCommit") == 0)
 			{
-				udtPEHeader.SizeOfHeapCommit() = t ? wcstoull(t, &s, 0) : udtPEHeaderLike.SizeOfHeapCommit();
+				udtPEHeader.SizeOfHeapCommit() = t ? _wcstoui64(t, &s, 0) : udtPEHeaderLike.SizeOfHeapCommit();
 			}
 			else if (_wcsicmp(s, L"/DependentLoadFlags") == 0)
 			{
