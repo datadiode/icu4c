@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-// PatchPE 2.03 - Copyright (c) 2017-2024 by Javier Gutierrez Chamorro et al.
+// PatchPE 2.04 - Copyright (c) 2017-2024 by Javier Gutierrez Chamorro et al.
 // Patches PE headers to make them compatible with older versions of Windows
 // or, in the occasional case of data-only DLLs, make them work on Windows CE.
 //
@@ -98,7 +98,7 @@ extern "C" int wmain(int argc, WCHAR *argv[])
 	PEHeader udtPEHeader;
 	size_t const preambleSize = RTL_SIZEOF_THROUGH_FIELD(PEHeader, Magic);
 
-	wprintf(L"PatchPE 2.03 - Copyright (c) 2017-2024 by Javier Gutierrez Chamorro et al.\n"
+	wprintf(L"PatchPE 2.04 - Copyright (c) 2017-2024 by Javier Gutierrez Chamorro et al.\n"
 			L"Patches PE headers to make them compatible with older versions of Windows\n"
 			L"or, in the occasional case of data-only DLLs, make them work on Windows CE.\n\n");
 	
@@ -206,7 +206,7 @@ extern "C" int wmain(int argc, WCHAR *argv[])
 	}
 
 	//Find and read load config
-	WORD nSH = udtPEHeader.FileHeader.NumberOfSections;
+	WORD hasLoadConfig = udtPEHeader.FileHeader.NumberOfSections;
 	IMAGE_DATA_DIRECTORY dSH = udtPEHeader.Directory()[IMAGE_DIRECTORY_ENTRY_LOAD_CONFIG];
 	IMAGE_SECTION_HEADER eSH;
 	do if (fread(&eSH, 1, sizeof eSH, pFile) != sizeof eSH)
@@ -214,40 +214,31 @@ extern "C" int wmain(int argc, WCHAR *argv[])
 		wprintf(L"Cannot read section header %s\n", r);
 		_fcloseall();
 		return(-11);
-	} while ((eSH.VirtualAddress > dSH.VirtualAddress || eSH.VirtualAddress + eSH.Misc.VirtualSize <= dSH.VirtualAddress) && --nSH);
-	if (nSH == 0)
+	} while ((eSH.VirtualAddress > dSH.VirtualAddress || eSH.VirtualAddress + eSH.Misc.VirtualSize <= dSH.VirtualAddress) && --hasLoadConfig);
+
+	if (hasLoadConfig)
 	{
-		wprintf(L"Section containing load config not found %s\n", r);
-		_fcloseall();
-		return(-12);
-	}
-	if (fseek(pFile, dSH.VirtualAddress - eSH.VirtualAddress + eSH.PointerToRawData, SEEK_SET) != 0)
-	{
-		wprintf(L"Cannot seek to read load config %s\n", r);
-		_fcloseall();
-		return(-13);
-	}
-	if (size_t const loadConfigSize = udtPEHeader.LoadConfigSize())
-	{
-		if (fread(&udtPEHeader.LoadConfigDirectory, 1, loadConfigSize, pFile) != loadConfigSize)
+		if (fseek(pFile, dSH.VirtualAddress - eSH.VirtualAddress + eSH.PointerToRawData, SEEK_SET) != 0)
 		{
-			wprintf(L"Cannot read load config %s\n", r);
+			wprintf(L"Cannot seek to read load config %s\n", r);
+			_fcloseall();
+			return(-12);
+		}
+		if (size_t const loadConfigSize = udtPEHeader.LoadConfigSize())
+		{
+			if (fread(&udtPEHeader.LoadConfigDirectory, 1, loadConfigSize, pFile) != loadConfigSize)
+			{
+				wprintf(L"Cannot read load config %s\n", r);
+				_fcloseall();
+				return(-13);
+			}
+		}
+		else
+		{
+			wprintf(L"Not a valid PE Executable. Invalid load config %s\n", r);
 			_fcloseall();
 			return(-14);
 		}
-	}
-	else
-	{
-		wprintf(L"Not a valid PE Executable. Invalid load config %s\n", r);
-		_fcloseall();
-		return(-15);
-	}
-
-	if (fseek(pFile, udtDOSHeader.e_lfanew, SEEK_SET) != 0)
-	{
-		wprintf(L"Cannot seek to write new PE header %s\n", r);
-		_fcloseall();
-		return(-16);
 	}
 
 	//Patch header
@@ -283,7 +274,7 @@ extern "C" int wmain(int argc, WCHAR *argv[])
 				{
 					wprintf(L"Cannot read input file %s\n", t);
 					_fcloseall();
-					return(-17);
+					return(-15);
 				}
 
 				//Read DOS header
@@ -291,13 +282,13 @@ extern "C" int wmain(int argc, WCHAR *argv[])
 				{
 					wprintf(L"Cannot read DOS header %s\n", t);
 					_fcloseall();
-					return(-18);
+					return(-16);
 				}
 				if ((udtDOSHeader.e_magic != MAKEWORD('M','Z')) && (udtDOSHeader.e_magic != MAKEWORD('Z','M')))
 				{
 					wprintf(L"Not a valid DOS Executable %s\n", t);
 					_fcloseall();
-					return(-19);
+					return(-17);
 				}
 
 				//Read PE Header
@@ -305,19 +296,19 @@ extern "C" int wmain(int argc, WCHAR *argv[])
 				{
 					wprintf(L"Cannot seek to read PE header %s\n", t);
 					_fcloseall();
-					return(-20);
+					return(-18);
 				}
 				if (fread(&udtPEHeaderLike, 1, preambleSize, pLike) != preambleSize)
 				{
 					wprintf(L"Cannot read PE header preamble %s\n", t);
 					_fcloseall();
-					return(-21);
+					return(-19);
 				}
 				if (udtPEHeaderLike.Signature != MAKEWORD('P','E'))
 				{
 					wprintf(L"Not a valid PE Executable. Invalid PE header %s\n", t);
 					_fcloseall();
-					return(-22);
+					return(-20);
 				}
 
 				//Check PE Optional header and read followup bytes
@@ -327,19 +318,19 @@ extern "C" int wmain(int argc, WCHAR *argv[])
 					{
 						wprintf(L"Cannot read PE header followup %s\n", r);
 						_fcloseall();
-						return(-23);
+						return(-21);
 					}
 				}
 				else
 				{
 					wprintf(L"Not a valid PE Executable. Invalid optional PE header %s\n", r);
 					_fcloseall();
-					return(-24);
+					return(-22);
 				}
 
 				//Find and read load config
 #				pragma warning(disable: 4456)
-				WORD nSH = udtPEHeaderLike.FileHeader.NumberOfSections;
+				WORD hasLoadConfig = udtPEHeaderLike.FileHeader.NumberOfSections;
 				IMAGE_DATA_DIRECTORY dSH = udtPEHeaderLike.Directory()[IMAGE_DIRECTORY_ENTRY_LOAD_CONFIG];
 				IMAGE_SECTION_HEADER eSH;
 #				pragma warning(default: 4456)
@@ -347,34 +338,32 @@ extern "C" int wmain(int argc, WCHAR *argv[])
 				{
 					wprintf(L"Cannot read section header %s\n", r);
 					_fcloseall();
-					return(-25);
-				} while ((eSH.VirtualAddress > dSH.VirtualAddress || eSH.VirtualAddress + eSH.Misc.VirtualSize <= dSH.VirtualAddress) && --nSH);
-				if (nSH == 0)
+					return(-23);
+				} while ((eSH.VirtualAddress > dSH.VirtualAddress || eSH.VirtualAddress + eSH.Misc.VirtualSize <= dSH.VirtualAddress) && --hasLoadConfig);
+
+				if (hasLoadConfig)
 				{
-					wprintf(L"Section containing load config not found %s\n", r);
-					_fcloseall();
-					return(-26);
-				}
-				if (fseek(pLike, dSH.VirtualAddress - eSH.VirtualAddress + eSH.PointerToRawData, SEEK_SET) != 0)
-				{
-					wprintf(L"Cannot seek to read load config %s\n", r);
-					_fcloseall();
-					return(-27);
-				}
-				if (size_t const loadConfigSize = udtPEHeaderLike.LoadConfigSize())
-				{
-					if (fread(&udtPEHeaderLike.LoadConfigDirectory, 1, loadConfigSize, pLike) != loadConfigSize)
+					if (fseek(pLike, dSH.VirtualAddress - eSH.VirtualAddress + eSH.PointerToRawData, SEEK_SET) != 0)
 					{
-						wprintf(L"Cannot read load config %s\n", r);
+						wprintf(L"Cannot seek to read load config %s\n", r);
 						_fcloseall();
-						return(-28);
+						return(-24);
 					}
-				}
-				else
-				{
-					wprintf(L"Not a valid PE Executable. Invalid load config %s\n", r);
-					_fcloseall();
-					return(-29);
+					if (size_t const loadConfigSize = udtPEHeaderLike.LoadConfigSize())
+					{
+						if (fread(&udtPEHeaderLike.LoadConfigDirectory, 1, loadConfigSize, pLike) != loadConfigSize)
+						{
+							wprintf(L"Cannot read load config %s\n", r);
+							_fcloseall();
+							return(-25);
+						}
+					}
+					else
+					{
+						wprintf(L"Not a valid PE Executable. Invalid load config %s\n", r);
+						_fcloseall();
+						return(-26);
+					}
 				}
 			}
 			else if (_wcsicmp(s, L"/Machine") == 0)
@@ -451,6 +440,10 @@ extern "C" int wmain(int argc, WCHAR *argv[])
 			{
 				udtPEHeader.SizeOfHeapCommit() = t ? _wcstoui64(t, &s, 0) : udtPEHeaderLike.SizeOfHeapCommit();
 			}
+			else if (!hasLoadConfig)
+			{
+				s = t; // indicates invalid option
+			}
 			else if (_wcsicmp(s, L"/DependentLoadFlags") == 0)
 			{
 				WORD value = t ? static_cast<WORD>(wcstoul(t, &s, 0)) : udtPEHeaderLike.DependentLoadFlags();
@@ -471,7 +464,7 @@ extern "C" int wmain(int argc, WCHAR *argv[])
 		{
 			wprintf(L"Invalid option\n");
 			_fcloseall();
-			return(-30);
+			return(-27);
 		}
 	}
 
@@ -545,7 +538,9 @@ extern "C" int wmain(int argc, WCHAR *argv[])
 	wprintf((wChanged & IMAGE_FILE_AGGRESIVE_WS_TRIM) ==	0 ? L"\n" : L" --> %s\n",
 			udtPEHeader.FileHeader.Characteristics & IMAGE_FILE_LARGE_ADDRESS_AWARE ? L"Yes" : L"No");
 
-	wprintf(L"Dependent Load Flags:               0x%04X",		udtPEHeaderUnpatched.DependentLoadFlags());
+	wprintf(!hasLoadConfig ?
+			L"Dependent Load Flags:               N/A" :
+			L"Dependent Load Flags:               0x%04X",		udtPEHeaderUnpatched.DependentLoadFlags());
 	wprintf(udtPEHeader.DependentLoadFlags() ==					udtPEHeaderUnpatched.DependentLoadFlags() ? L"\n" : L" --> 0x%04X\n",
 			udtPEHeader.DependentLoadFlags());
 
@@ -556,11 +551,17 @@ extern "C" int wmain(int argc, WCHAR *argv[])
 	}
 	else if (memcmp(&udtPEHeaderUnpatched, &udtPEHeader, sizeof udtPEHeader))
 	{
+		if (fseek(pFile, udtDOSHeader.e_lfanew, SEEK_SET) != 0)
+		{
+			wprintf(L"Cannot seek to write new PE header %s\n", r);
+			_fcloseall();
+			return(-28);
+		}
 		if (fwrite(&udtPEHeader, 1, preambleSize, pFile) != preambleSize)
 		{
 			wprintf(L"Cannot write new header preamble %s\n", r);
 			_fcloseall();
-			return(-31);
+			return(-29);
 		}
 		if (size_t const followupSize = udtPEHeader.FollowupSize())
 		{
@@ -568,22 +569,25 @@ extern "C" int wmain(int argc, WCHAR *argv[])
 			{
 				wprintf(L"Cannot write new header followup %s\n", r);
 				_fcloseall();
-				return(-32);
+				return(-30);
 			}
 		}
-		if (fseek(pFile, dSH.VirtualAddress - eSH.VirtualAddress + eSH.PointerToRawData, SEEK_SET) != 0)
+		if (hasLoadConfig)
 		{
-			wprintf(L"Cannot seek to write new load config %s\n", r);
-			_fcloseall();
-			return(-33);
-		}
-		if (size_t const loadConfigSize = udtPEHeader.LoadConfigSize())
-		{
-			if (fwrite(&udtPEHeader.LoadConfigDirectory, 1, loadConfigSize, pFile) != loadConfigSize)
+			if (fseek(pFile, dSH.VirtualAddress - eSH.VirtualAddress + eSH.PointerToRawData, SEEK_SET) != 0)
 			{
-				wprintf(L"Cannot write new load config %s\n", r);
+				wprintf(L"Cannot seek to write new load config %s\n", r);
 				_fcloseall();
-				return(-34);
+				return(-31);
+			}
+			if (size_t const loadConfigSize = udtPEHeader.LoadConfigSize())
+			{
+				if (fwrite(&udtPEHeader.LoadConfigDirectory, 1, loadConfigSize, pFile) != loadConfigSize)
+				{
+					wprintf(L"Cannot write new load config %s\n", r);
+					_fcloseall();
+					return(-32);
+				}
 			}
 		}
 		wprintf(L"\nPatched successfully!\n\n");
